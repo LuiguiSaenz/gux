@@ -26,11 +26,11 @@ import testService from '../../services/TestService';
 function Home({ ...props }) {
   const [filters, setFilters] = useState({
     rol: '',
-    patient: '',
+    search: '',
     prevision: '',
     status: '',
-    from_date: null,
-    until_date: null,
+    alta_date__gte: null,
+    alta_date__lte: null,
   });
   const [search, setSearch] = useState({
     rol: '',
@@ -38,38 +38,35 @@ function Home({ ...props }) {
     hospital_date: null,
     alta_date: null,
     prevision_date: null,
-    code: '',
+    prevision: '',
     action: '',
     number: '',
-    pam: '',
+    status: '',
   });
   const [loading, setLoading] = useState(false);
-  const [tests, setTests] = useState([
-    {
-      id: 1,
-      rol: 'Adminstrados',
-      patient: 'Luigui Saenz',
-      hospital_date: '2021-02-02',
-      alta_date: '2021-05-09',
-      prevision_date: '2021-04-10',
-      code: 'CESAREA',
-      action: 'C1',
-      number: '10',
-      pam: 'PAM 1',
-    },
-    {
-      id: 2,
-      rol: 'Gerente',
-      patient: 'Pepe Casillas',
-      hospital_date: '2021-05-10',
-      alta_date: '2021-10-04',
-      prevision_date: '2021-10-01',
-      code: 'PROLAPSO',
-      action: 'C2',
-      number: '20',
-      pam: 'PAM 2',
-    },
-  ]);
+  const [tests, setTests] = useState([]);
+  const [statusOptions, setStatusOptions] = useState([]);
+  const [previsionOptions, setPrevisionOptions] = useState([]);
+
+  useEffect(() => {
+    _handleGetOptions()
+  }, [])
+
+  const _handleGetOptions = async () => {
+    try {
+      const response1 = await testService.listStatus()
+      const response2 = await testService.listPrevisions()
+      setLoading(false);
+      if (response1.status === 200) {
+        setStatusOptions(response1.data)
+      } 
+      if (response2.status === 200) {
+        setPrevisionOptions(response2.data)
+      } 
+    } catch (error) {
+      console.log(error);
+    }
+  }
 
   const _handleCleanFilters = () => {
     setFilters({
@@ -77,8 +74,8 @@ function Home({ ...props }) {
       patient: '',
       prevision: '',
       status: '',
-      from_date: null,
-      until_date: null,
+      alta_date__gte: null,
+      alta_date__lte: null,
     });
   };
   const _handleSearch = async () => {
@@ -87,26 +84,40 @@ function Home({ ...props }) {
     Object.keys(filters).forEach(key => {
       if (!!filters[key]) newFilters[key] = filters[key];
     });
-    const response = await testService.list(newFilters);
-    setLoading(false);
-    console.log(response);
+    try {
+      const response = await testService.list(newFilters);
+      setLoading(false);
+      if (response.status === 200) {
+        setTests(response.data);
+      } else {
+        setTests([]);
+      }
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   const _handleFilterRows = (rows, search) => {
     let newRows = rows;
 
     Object.keys(search).forEach(key => {
-      if(search[key]) {
-        if(moment(search[key]).isValid()) {
-          newRows = newRows.filter((row) =>
-            moment(row[key]).isSame(moment(search[key]))
+      if (search[key]) {
+        if (['prevision', 'status'].includes(key)) {
+          newRows = newRows.filter(
+            row => row[key].name.toLowerCase().indexOf(search[key].toLowerCase()) !== -1
           );
+          return;
         }
-        else {
-          newRows = newRows.filter((row) => row[key].toLowerCase().indexOf(search[key]) !== -1);
+        if (['hospital_date', 'alta_date', 'prevision_date'].includes(key)) {
+          newRows = newRows.filter(row => moment(row[key]).isSame(moment(search[key])));
+        } else {
+          newRows = newRows.filter(row => {
+            console.log(row[key].toLowerCase(), search[key].toLowerCase());
+            return row[key].toLowerCase().indexOf(search[key].toLowerCase()) !== -1;
+          });
         }
       }
-    })
+    });
 
     return newRows;
   };
@@ -118,7 +129,7 @@ function Home({ ...props }) {
           FILTROS:
         </Typography>
         <Grid container spacing={4}>
-          <Grid item xs={3}>
+          <Grid item xs={12} sm={3}>
             <TextField
               label="Rol"
               name="rol"
@@ -136,7 +147,7 @@ function Home({ ...props }) {
               value={filters.rol}
             />
           </Grid>
-          <Grid item xs={3}>
+          <Grid item xs={12} sm={3}>
             <TextField
               fullWidth
               label="Paciente"
@@ -145,15 +156,15 @@ function Home({ ...props }) {
               onChange={e =>
                 setFilters({
                   ...filters,
-                  patient: e.target.value,
+                  search: e.target.value,
                 })
               }
               size="small"
               placeholder="Ingrese Paciente"
-              value={filters.patient}
+              value={filters.search}
             />
           </Grid>
-          <Grid item xs={3}>
+          <Grid item xs={12} sm={3}>
             <TextField
               select
               label="Prevision"
@@ -169,17 +180,17 @@ function Home({ ...props }) {
                 })
               }
             >
-              {[
-                { value: 1, label: 'label 1' },
-                { value: 2, label: 'label 2' },
-              ].map(option => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
+              <MenuItem key={'prevision-empty'} value={''}>
+                Seleccione
+              </MenuItem>
+              {previsionOptions.map(option => (
+                <MenuItem key={option.id} value={option.id}>
+                  {option.name}
                 </MenuItem>
               ))}
             </TextField>
           </Grid>
-          <Grid item xs={3}>
+          <Grid item xs={12} sm={3}>
             <TextField
               select
               label="Estado"
@@ -195,33 +206,35 @@ function Home({ ...props }) {
                 })
               }
             >
-              {[
-                { value: 1, label: 'label 1' },
-                { value: 2, label: 'label 2' },
-              ].map(option => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
+              <MenuItem key={'status-empty'} value={''}>
+                Seleccione
+              </MenuItem>
+              {statusOptions.map(option => (
+                <MenuItem key={option.id} value={option.id}>
+                  {option.name}
                 </MenuItem>
               ))}
             </TextField>
           </Grid>
-          <Grid item xs={3}>
+          <Grid item xs={12} sm={3}>
             <DatePicker
               label="Fecha Alta Desde"
               size="small"
               variant="outlined"
+              clearable
               autoOk={true}
-              value={filters.from_date}
+              value={filters.alta_date__gte}
+              fullWidth
               onChange={date =>
                 setFilters({
                   ...filters,
-                  from_date: moment(date).format('YYYY-MM-DD'),
+                  alta_date__gte: date ? moment(date).format('YYYY-MM-DD') : null,
                 })
               }
               format="DD/MM/YYYY"
               maxDate={
-                filters.until_date
-                  ? moment(filters.until_date).toDate()
+                filters.alta_date__lte
+                  ? moment(filters.alta_date__lte).toDate()
                   : moment().add(100, 'years').toDate()
               }
               InputProps={{
@@ -235,23 +248,25 @@ function Home({ ...props }) {
               }}
             />
           </Grid>
-          <Grid item xs={3}>
+          <Grid item xs={12} sm={3}>
             <DatePicker
               label="Fecha Alta Hasta"
               size="small"
               variant="outlined"
+              clearable
               autoOk={true}
-              value={filters.until_date}
+              fullWidth
+              value={filters.alta_date__lte}
               onChange={date =>
                 setFilters({
                   ...filters,
-                  until_date: moment(date).format('YYYY-MM-DD'),
+                  alta_date__lte: date ? moment(date).format('YYYY-MM-DD') : null,
                 })
               }
               format="DD/MM/YYYY"
               minDate={
-                filters.from_date
-                  ? moment(filters.from_date).toDate()
+                filters.alta_date__gte
+                  ? moment(filters.alta_date__gte).toDate()
                   : moment().subtract(100, 'years').toDate()
               }
               InputProps={{
@@ -266,7 +281,7 @@ function Home({ ...props }) {
             />
           </Grid>
         </Grid>
-        <Grid container justifyContent="flex-end">
+        <Grid container justifyContent="flex-end" className="mt-20">
           <Button variant="contained" color="primary" onClick={_handleCleanFilters}>
             LIMPIAR
           </Button>
@@ -279,7 +294,7 @@ function Home({ ...props }) {
             BUSCAR
           </Button>
         </Grid>
-        <Grid className="mt-20">
+        <Grid className="mt-20 scroll-horizontal">
           {loading ? (
             <CircularLoading />
           ) : (
@@ -291,10 +306,10 @@ function Home({ ...props }) {
                   <TableCell>Fecha Hosp.</TableCell>
                   <TableCell>Fecha Alta</TableCell>
                   <TableCell>Fecha Prevision</TableCell>
-                  <TableCell>Código Pres.</TableCell>
+                  <TableCell>Código Prev.</TableCell>
                   <TableCell>Acción</TableCell>
                   <TableCell>N°</TableCell>
-                  <TableCell>Tipo PAM</TableCell>
+                  <TableCell>Status</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -376,11 +391,11 @@ function Home({ ...props }) {
                   <TableCell>
                     <TextField
                       variant="outlined"
-                      value={search.code}
+                      value={search.prevision}
                       onChange={e =>
                         setSearch({
                           ...search,
-                          code: e.target.value,
+                          prevision: e.target.value,
                         })
                       }
                       size="small"
@@ -415,11 +430,11 @@ function Home({ ...props }) {
                   <TableCell>
                     <TextField
                       variant="outlined"
-                      value={search.pam}
+                      value={search.status}
                       onChange={e =>
                         setSearch({
                           ...search,
-                          pam: e.target.value,
+                          status: e.target.value,
                         })
                       }
                       size="small"
@@ -435,10 +450,10 @@ function Home({ ...props }) {
                     <TableCell>{moment(row.hospital_date).format('DD/MM/YYYY')}</TableCell>
                     <TableCell>{moment(row.alta_date).format('DD/MM/YYYY')}</TableCell>
                     <TableCell>{moment(row.prevision_date).format('DD/MM/YYYY')}</TableCell>
-                    <TableCell>{row.code}</TableCell>
+                    <TableCell>{row.prevision.name}</TableCell>
                     <TableCell>{row.action}</TableCell>
                     <TableCell>{row.number}</TableCell>
-                    <TableCell>{row.pam}</TableCell>
+                    <TableCell>{row.status.name}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

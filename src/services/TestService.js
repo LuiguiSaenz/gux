@@ -16,4 +16,19 @@ async function list(filters) {
   }
 }
 
-export default { list };
+async function listStatus() {
+  try {
+    return await http.get('/status');
+  } catch (error) {
+    return error.response;
+  }
+}
+async function listPrevisions() {
+  try {
+    return await http.get('/previsions');
+  } catch (error) {
+    return error.response;
+  }
+}
+
+export default { list, listStatus, listPrevisions };
