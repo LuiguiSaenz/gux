@@ -94,41 +94,19 @@ function Home({ ...props }) {
 
   const _handleFilterRows = (rows, search) => {
     let newRows = rows;
-    if (search.rol) {
-      newRows = newRows.filter(({ rol }) => rol.toLowerCase().indexOf(search.rol) !== -1);
-    }
-    if (search.patient) {
-      newRows = newRows.filter(
-        ({ patient }) => patient.toLowerCase().indexOf(search.patient) !== -1
-      );
-    }
-    if (search.code) {
-      newRows = newRows.filter(({ code }) => code.toLowerCase().indexOf(search.code) !== -1);
-    }
-    if (search.action) {
-      newRows = newRows.filter(({ action }) => action.toLowerCase().indexOf(search.action) !== -1);
-    }
-    if (search.number) {
-      newRows = newRows.filter(({ number }) => number.toLowerCase().indexOf(search.number) !== -1);
-    }
-    if (search.pam) {
-      newRows = newRows.filter(({ pam }) => pam.toLowerCase().indexOf(search.pam) !== -1);
-    }
-    if (search.hospital_date) {
-      newRows = newRows.filter(({ hospital_date }) =>
-        moment(hospital_date).isSame(moment(search.hospital_date))
-      );
-    }
-    if (search.alta_date) {
-      newRows = newRows.filter(({ alta_date }) =>
-        moment(alta_date).isSame(moment(search.alta_date))
-      );
-    }
-    if (search.prevision_date) {
-      newRows = newRows.filter(({ prevision_date }) =>
-        moment(prevision_date).isSame(moment(search.prevision_date))
-      );
-    }
+
+    Object.keys(search).forEach(key => {
+      if(search[key]) {
+        if(moment(search[key]).isValid()) {
+          newRows = newRows.filter((row) =>
+            moment(row[key]).isSame(moment(search[key]))
+          );
+        }
+        else {
+          newRows = newRows.filter((row) => row[key].toLowerCase().indexOf(search[key]) !== -1);
+        }
+      }
+    })
 
     return newRows;
   };
