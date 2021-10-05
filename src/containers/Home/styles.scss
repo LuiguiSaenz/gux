@@ -1,0 +1,9 @@
+#home{
+  .button-green{
+    background-color: green;
+    color: white;
+    &:hover {
+      background-color: #026f02;
+    }
+  }
+}
