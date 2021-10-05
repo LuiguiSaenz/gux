@@ -1,0 +1,8 @@
+node_modules/
+build/
+yarn.lock
+**/.DS_Store
+
+# Misc
+.env
+.env.*
